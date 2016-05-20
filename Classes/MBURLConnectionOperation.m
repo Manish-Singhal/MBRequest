@@ -28,18 +28,14 @@
 
 @implementation MBURLConnectionOperation
 
+@synthesize finished = _finished;
+@synthesize executing = _executing;
+
 #pragma mark - Accessors
 
 - (void)setResponseDataOverride:(NSData *)data
 {
     self.responseData = data;
-}
-
-#pragma mark - Main Functionality
-
-- (void)start
-{
-    [self main];
 }
 
 - (void)main
@@ -66,12 +62,11 @@
         }
 #endif
 
-        NSURLSession *session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]
+        self.session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]
                                                               delegate:self
-                                                         delegateQueue:[NSOperationQueue currentQueue]];
+                                                         delegateQueue:nil];
         
-        NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:self.request];
-        self.dataTask = dataTask;
+        self.dataTask = [self.session dataTaskWithRequest:self.request];
                                           
         if (self.dataTask == nil)
         {
@@ -134,13 +129,23 @@
     // reference it again. This must be done on the runloop (if it is running) since the runloop's
     // thread may be *just* about to send a message to the delegate.
     self.delegate = nil;
-
+    self.session = nil;
+    self.dataTask = nil;
+    
     if ([self isExecuting] && [self runLoopIsRunning])
     {
         CFRunLoopStop(self.runLoop);
         self.runLoop = nil;
         self.runLoopIsRunning = NO;
     }
+    
+    [self willChangeValueForKey:@"isExecuting"];
+    _executing = NO;
+    [self didChangeValueForKey:@"isExecuting"];
+    
+    [self willChangeValueForKey:@"isFinished"];
+    _finished = YES;
+    [self didChangeValueForKey:@"isFinished"];
 }
 
 - (void)handleResponse
